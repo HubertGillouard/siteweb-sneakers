@@ -2,51 +2,18 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, viewport-fit=cover"
-    />
-    <meta name="color-scheme" content="light dark" />
-    <meta name="description" content="Sneakers Shop – démo e-commerce" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Sneakers Shop</title>
-
-    <!-- (optionnel) favicon si tu en as un dans /public -->
-    <!-- <link rel="icon" href="/favicon.ico" /> -->
-
-    <!-- Vite lira ce fichier en dev; en build, il remplacera ce script par le bundle. -->
-    <script type="module" src="/src/main.jsx"></script>
-
-    <style>
-      /* Mini style pour éviter un flash trop vide avant le boot JS */
-      html, body {
-        height: 100%;
-      }
-      body {
-        margin: 0;
-        font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-        background: #ffffff;
-        color: #111;
-      }
-      #root {
-        min-height: 100%;
-      }
-      .no-js {
-        padding: 16px;
-        max-width: 720px;
-        margin: 24px auto;
-        background: #fff3cd;
-        color: #5c4700;
-        border: 1px solid #ffe69c;
-        border-radius: 12px;
-      }
-    </style>
+    <meta name="description" content="Boutique de sneakers — catalogue, panier, paiement fictif, authentification." />
+    <meta name="theme-color" content="#0a0d12" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <!-- Polices -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
   </head>
   <body>
-    <div id="root">
-      <div class="no-js">
-        <strong>JavaScript est désactivé.</strong>
-        <p>Active JavaScript pour utiliser l’application.</p>
-      </div>
-    </div>
+    <div id="root"><noscript>Active JavaScript pour utiliser l’application.</noscript></div>
+    <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

@@ -3,41 +3,32 @@ import { Link } from "react-router-dom";
 import { resolveImg, formatPrice } from "../api";
 
 export default function ProductCard({ product }) {
-  if (!product) return null;
-
-  const img = resolveImg(product.link);
-  const price = formatPrice(product.price);
+  const img = resolveImg(product?.link);
+  const price = product?.price ?? 129.99;
 
   return (
-    <div className="product-card" style={styles.card}>
-      <Link to={`/product/${product.id}`} style={styles.link} aria-label={product.name}>
-        <img
-          src={img}
-          alt={product.name}
-          style={styles.img}
-          loading="lazy"
-          decoding="async"
-        />
-        <div style={styles.body}>
-          <h3 style={styles.title}>{product.name}</h3>
-          <div style={styles.price}>{price}</div>
-        </div>
-      </Link>
-    </div>
+    <Link to={`/product/${product.id}`} style={styles.card}>
+      <div style={styles.imgWrap}>
+        <img src={img} alt={product?.name} style={styles.img} loading="lazy" />
+        <span style={styles.badge}>En stock</span>
+      </div>
+      <div style={styles.body}>
+        <div style={styles.name}>{product?.name || "Sneakers"}</div>
+        <div style={styles.price}>{formatPrice(price)}</div>
+      </div>
+    </Link>
   );
 }
 
 const styles = {
   card: {
-    border: "1px solid #eee",
-    borderRadius: 12,
-    overflow: "hidden",
-    background: "#fff",
-    transition: "transform .15s ease",
+    display:"block", background:"#fff", borderRadius:16, overflow:"hidden",
+    border:"1px solid #eee", textDecoration:"none", color:"#111", transition:"transform .15s ease",
   },
-  link: { color: "inherit", textDecoration: "none", display: "block" },
-  img: { display: "block", width: "100%", height: "auto", aspectRatio: "1/1", objectFit: "cover" },
-  body: { padding: 12 },
-  title: { margin: "0 0 6px", fontSize: 16, lineHeight: 1.2 },
-  price: { fontWeight: 600 },
+  imgWrap: { position:"relative", aspectRatio:"4/3", background:"#f6f6f6", overflow:"hidden" },
+  img: { width:"100%", height:"100%", objectFit:"cover", display:"block", transform:"scale(1.02)" },
+  badge: { position:"absolute", left:10, top:10, background:"#111827", color:"#fff", padding:"4px 8px", borderRadius:8, fontSize:12 },
+  body: { padding:12, display:"grid", gap:6 },
+  name: { fontWeight:600, lineHeight:1.2 },
+  price: { fontWeight:800 }
 };

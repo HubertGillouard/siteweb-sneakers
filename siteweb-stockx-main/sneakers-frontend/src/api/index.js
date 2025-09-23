@@ -1,282 +1,263 @@
-// --- Détection de l’API (via Nginx proxy) -----------------------------------
-const ORIGIN =
-  typeof window !== "undefined" && window.location && window.location.origin
-    ? window.location.origin
-    : "";
-const API = `${ORIGIN}/api`;
+// sneakers-frontend/src/api/index.js
 
-// --- Outils fetch + Auth ------------------------------------------------------
-function getToken() {
-  try {
-    return localStorage.getItem("token") || null;
-  } catch {
-    return null;
-  }
-}
-function setToken(tok) {
-  try {
-    if (tok) localStorage.setItem("token", tok);
-    else localStorage.removeItem("token");
-  } catch {}
+// ---------------------------------------------------------------------------
+// Base API (proxifiée par Nginx sur /api)
+// ---------------------------------------------------------------------------
+const API_BASE = "/api";
+
+// ---------------------------------------------------------------------------
+// Auth token (mémoire + localStorage)
+// ---------------------------------------------------------------------------
+let _token = null;
+
+export function setAuthToken(t) {
+  _token = t || null;
+  if (t) localStorage.setItem("token", t);
+  else localStorage.removeItem("token");
 }
 
-function authHeader() {
-  const t = getToken();
-  return t ? { Authorization: `Bearer ${t}` } : {};
+export function getAuthToken() {
+  return _token || localStorage.getItem("token") || null;
 }
 
-async function apiFetch(path, init = {}) {
-  const headers = {
-    ...(init.headers || {}),
-    ...authHeader(),
+export function bootAuthFromStorage() {
+  const t = localStorage.getItem("token");
+  if (t) _token = t;
+  return _token;
+}
+
+// ---------------------------------------------------------------------------
+// HTTP helper
+// ---------------------------------------------------------------------------
+async function http(path, { method = "GET", headers = {}, body } = {}) {
+  const opts = {
+    method,
+    headers: { "Content-Type": "application/json", ...headers },
   };
-  const res = await fetch(`${API}${path}`, {
-    credentials: "include",
-    ...init,
-    headers,
-  });
+  const tok = getAuthToken();
+  if (tok) opts.headers["Authorization"] = `Bearer ${tok}`;
+  if (body !== undefined) {
+    opts.body = typeof body === "string" ? body : JSON.stringify(body);
+  }
+
+  const res = await fetch(`${API_BASE}${path}`, opts);
   if (!res.ok) {
-    const msg = await safeText(res);
-    throw new Error(`HTTP ${res.status} ${res.statusText} — ${msg || path}`);
+    const text = await res.text().catch(() => "");
+    throw new Error(`${res.status} ${res.statusText} — ${text}`);
   }
   const ct = res.headers.get("content-type") || "";
   return ct.includes("application/json") ? res.json() : res.text();
 }
-async function safeText(r) {
+
+// ---------------------------------------------------------------------------
+// Images
+// ---------------------------------------------------------------------------
+export function resolveImg(url) {
+  if (!url) return `${API_BASE}/images/placeholder.jpg`;
+  if (url.startsWith("/images/")) return `${API_BASE}${url}`;
+  if (url.startsWith("/api/images/")) return url;
+  return url; // lien absolu externe
+}
+
+// ---------------------------------------------------------------------------
+// Produits
+// ---------------------------------------------------------------------------
+export const health = () => http("/health");
+export const productCount = () => http("/_count");
+
+export const getProducts = () => http("/products");
+export const getProduct = (id) => http(`/products/${id}`);
+export const searchProducts = (q) => http(`/products?q=${encodeURIComponent(q)}`);
+
+export const createProduct = (p) =>
+  http("/products", { method: "POST", body: p });
+
+export const updateProduct = (id, p) =>
+  http(`/products/${id}`, { method: "PUT", body: p });
+
+export const deleteProduct = (id) =>
+  http(`/products/${id}`, { method: "DELETE" });
+
+// ---------------------------------------------------------------------------
+// Stock (vendeur)
+// Accepte plusieurs formes d'appel :
+// - updateStock(id, { size, qty })
+// - updateStock(id, { size, delta })
+// - updateStock(id, size, qty)
+// - updateStock(id, size, null, delta)
+// Essaye PATCH /products/:id/stock, sinon fallback sur PUT /products/:id
+// ---------------------------------------------------------------------------
+export function updateStock(id, arg1, arg2, arg3) {
+    // Normalisation des paramètres
+    let payload;
+    if (typeof arg1 === "object" && arg1 !== null) {
+      // { size, qty } ou { size, delta }
+      payload = { ...arg1 };
+    } else {
+      // (id, size, qty) ou (id, size, qty, delta)
+      payload = { size: arg1 };
+      if (typeof arg2 === "number") payload.qty = arg2;
+      if (typeof arg3 === "number") payload.delta = arg3;
+    }
+    return _updateStockImpl(id, payload);
+  }
+  
+  async function _updateStockImpl(id, { size, qty, delta } = {}) {
+    // 1) Tentative PATCH dédié (route préférable si dispo côté API)
+    try {
+      return await http(`/products/${id}/stock`, {
+        method: "PATCH",
+        body: { size, qty, delta },
+      });
+    } catch (e) {
+      // 2) Fallback : si la route n'existe pas (404/405), on met à jour le produit complet
+      if (/\b(404|405)\b/.test(String(e.message))) {
+        const p = await getProduct(id);
+  
+        // Cas tailles : p.sizes = [{ size: "42", stock: 3 }, ...]
+        if (Array.isArray(p.sizes) && size != null) {
+          const idx = p.sizes.findIndex((s) => String(s.size) === String(size));
+          if (idx >= 0) {
+            const current = Number(p.sizes[idx].stock || 0);
+            p.sizes[idx].stock =
+              delta != null ? current + Number(delta) : Number(qty ?? current);
+          } else {
+            // si la taille n'existe pas encore, on l'ajoute
+            p.sizes.push({
+              size,
+              stock:
+                delta != null
+                  ? Number(delta)
+                  : Number(qty ?? 0),
+            });
+          }
+        } else {
+          // Cas simple : p.stock (global)
+          const current = Number(p.stock || 0);
+          p.stock =
+            delta != null ? current + Number(delta) : Number(qty ?? current);
+        }
+  
+        return updateProduct(id, p);
+      }
+      throw e;
+    }
+  }
+  
+// ---------------------------------------------------------------------------
+// Auth (API)
+// ---------------------------------------------------------------------------
+export async function login(email, password) {
+  const data = await http("/auth/login", {
+    method: "POST",
+    body: { email, password },
+  });
+  if (data?.token) setAuthToken(data.token);
+  return data;
+}
+
+export const me = () => http("/auth/me");
+
+/** Déconnexion côté front : on oublie juste le token */
+export function logout() {
+  setAuthToken(null);
+  return Promise.resolve();
+}
+
+// alias compat si du code existant importe encore `logoutApi`
+export const logoutApi = logout;
+
+// ---------------------------------------------------------------------------
+// Panier (localStorage côté front)
+// ---------------------------------------------------------------------------
+const CART_KEY = "cart:v1";
+
+export function getCart() {
   try {
-    return await r.text();
+    return JSON.parse(localStorage.getItem(CART_KEY)) || [];
   } catch {
-    return "";
+    return [];
   }
 }
 
-// --- Produits -----------------------------------------------------------------
-export async function getProducts() {
-  // /api/products → [{id, name, price, link, stock, ...}]
-  return apiFetch("/products", { method: "GET" });
+function saveCart(items) {
+  localStorage.setItem(CART_KEY, JSON.stringify(items));
+  return items;
 }
 
-export async function getProduct(id) {
-  return apiFetch(`/products/${id}`, { method: "GET" });
+export function clearCart() {
+  localStorage.removeItem(CART_KEY);
+  return [];
 }
 
-// --- Images (link => URL finale) ---------------------------------------------
-export function resolveImg(link) {
-  if (!link) return `${API}/images/placeholder.jpg`;
-  if (link.startsWith("http://") || link.startsWith("https://")) return link;
-  // tes produits ont souvent: "/images/xxx.jpg" -> servir par l'API: /api/images/xxx.jpg
-  if (link.startsWith("/images/")) return `${API}${link}`;
-  // fallback (rare)
-  return `${API}/images/placeholder.jpg`;
-}
-
-// --- Format prix --------------------------------------------------------------
-export function formatPrice(value, currency = "EUR", locale = "fr-FR") {
-  try {
-    return new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 2,
-    }).format(Number(value || 0));
-  } catch {
-    return `${Number(value || 0).toFixed(2)} ${currency}`;
+export function addToCart(item) {
+  const items = getCart();
+  const idx = items.findIndex(
+    (i) => i.id === item.id && i.size === item.size
+  );
+  if (idx >= 0) {
+    items[idx].qty = (items[idx].qty || 1) + (item.qty || 1);
+  } else {
+    items.push({ ...item, qty: item.qty ?? 1 });
   }
+  return saveCart(items);
 }
 
-// --- Auth (simple) ------------------------------------------------------------
-export function bootAuthFromStorage() {
-  const t = getToken();
-  if (!t) return null;
+export function updateCartItem(id, size, patch) {
+  const items = getCart();
+  const it = items.find((i) => i.id === id && i.size === size);
+  if (it) {
+    if (patch.qty != null) it.qty = Math.max(1, Number(patch.qty) || 1);
+    if (patch.size) it.size = patch.size;
+  }
+  return saveCart(items);
+}
+
+export function removeFromCart(id, size) {
+  const items = getCart().filter((i) => !(i.id === id && i.size === size));
+  return saveCart(items);
+}
+
+// ---------------------------------------------------------------------------
+// RGPD / Cookies (localStorage côté front)
+// ---------------------------------------------------------------------------
+const CONSENT_KEY = "consent:v1";
+
+/**
+ * getConsent() -> retourne l'objet de consentement ou null s’il n’existe pas.
+ * Exemple d’objet stocké :
+ * { necessary: true, analytics: true|false, marketing: true|false, timestamp: 1699999999999 }
+ */
+export function getConsent() {
   try {
-    const raw = localStorage.getItem("profile");
+    const raw = localStorage.getItem(CONSENT_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
 }
 
-export async function login(email, password) {
-  const data = await apiFetch("/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
-  // on attend { token, user? }
-  if (data && data.token) setToken(data.token);
-  if (data && data.user) {
-    try {
-      localStorage.setItem("profile", JSON.stringify(data.user));
-    } catch {}
-  }
-  return data;
-}
-
-export function logout() {
-  setToken(null);
-  try {
-    localStorage.removeItem("profile");
-  } catch {}
-  return true;
-}
-
-// --- Consentement cookies (RGPD) ---------------------------------------------
-const CONSENT_KEY = "consent.v1";
-export function getConsent() {
-  try {
-    const raw = localStorage.getItem(CONSENT_KEY);
-    return raw ? JSON.parse(raw) : { functional: true, analytics: false };
-  } catch {
-    return { functional: true, analytics: false };
-  }
-}
-export function setConsent(val) {
-  try {
-    localStorage.setItem(CONSENT_KEY, JSON.stringify(!!val ? val : { functional: true, analytics: false }));
-  } catch {}
-}
-
-// --- Panier côté front (localStorage) ----------------------------------------
-const CART_KEY = "cart.v1";
-
-function readCart() {
-  try {
-    const raw = localStorage.getItem(CART_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-function writeCart(items) {
-  try {
-    localStorage.setItem(CART_KEY, JSON.stringify(items || []));
-  } catch {}
-}
-
-export function getCart() {
-  const items = readCart();
-  // enrichir avec name/price si absent (meilleur affichage)
-  return items;
-}
-
-export async function addToCart(productId, qty = 1, size) {
-  const items = readCart();
-  const idx = items.findIndex(
-    (it) => it.productId === productId && (size ? it.size === size : !it.size)
-  );
-  // récupérer infos produit pour nom/prix si pas déjà connu
-  let name = "Produit";
-  let price = 0;
-  try {
-    const p = await getProduct(productId);
-    name = p?.name || name;
-    price = Number(p?.price || 0);
-  } catch {}
-
-  if (idx >= 0) {
-    items[idx].qty = Math.max(1, Number(items[idx].qty || 1) + Number(qty || 1));
-    // si le prix a été mis à jour côté API
-    if (price) items[idx].price = price;
-    if (name) items[idx].name = name;
-  } else {
-    items.push({
-      productId,
-      qty: Math.max(1, Number(qty || 1)),
-      size,
-      name,
-      price,
-    });
-  }
-  writeCart(items);
-  return items;
-}
-
-export function updateCartItem(productId, qty, size) {
-  const items = readCart();
-  const idx = items.findIndex(
-    (it) => it.productId === productId && (size ? it.size === size : !it.size)
-  );
-  if (idx >= 0) {
-    items[idx].qty = Math.max(1, Number(qty || 1));
-    writeCart(items);
-  }
-  return items;
-}
-
-export function removeFromCart(productId, size) {
-  let items = readCart();
-  items = items.filter(
-    (it) => !(it.productId === productId && (size ? it.size === size : !it.size))
-  );
-  writeCart(items);
-  return items;
-}
-
-export function clearCart() {
-  writeCart([]);
-  return [];
-}
-
-// --- Vendeur : mise à jour stock/prix ----------------------------------------
-export async function updateStock(productId, { stock, price }) {
-  // tente PATCH /products/:id (ton API Express expose souvent ce genre de route)
-  try {
-    const body = {};
-    if (typeof stock === "number") body.stock = stock;
-    if (typeof price === "number") body.price = price;
-
-    return await apiFetch(`/products/${productId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-  } catch (e) {
-    // en démo, si l’API ne supporte pas encore: on renvoie un faux succès
-    console.warn("updateStock fallback:", e?.message || e);
-    return { ok: true, productId, stock, price, _fallback: true };
-  }
-}
-
-// --- Checkout (paiement fictif) ----------------------------------------------
 /**
- * Signature souple :
- *   - checkout({ items, payment, shipping, totals })
- *   - ou checkout(itemsArray, payment)
- * Retourne { ok, orderId, status, ... }
+ * setConsent(value) -> enregistre l’objet de consentement.
+ * `value` peut être :
+ *  - un booléen (true/false) -> appliqué à analytics/marketing
+ *  - ou un objet complet { analytics, marketing, necessary, ... }
  */
-export async function checkout(payloadOrItems, maybePayment) {
-  let payload;
-  if (Array.isArray(payloadOrItems)) {
-    payload = {
-      items: payloadOrItems,
-      payment: maybePayment || { brand: "visa", last4: "4242" },
+export function setConsent(value) {
+  let v;
+  if (typeof value === "boolean") {
+    v = {
+      necessary: true,
+      analytics: value,
+      marketing: value,
+      timestamp: Date.now(),
     };
-  } else if (payloadOrItems && typeof payloadOrItems === "object") {
-    payload = payloadOrItems;
+  } else if (value && typeof value === "object") {
+    v = { necessary: true, timestamp: Date.now(), ...value };
   } else {
-    payload = { items: [], payment: {} };
+    v = null;
   }
-
-  // 1) si ton API a une route d’orders :
-  try {
-    return await apiFetch("/orders", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-  } catch (e) {
-    // 2) fallback local simulé (paiement fictif)
-    console.warn("checkout fallback (simulation):", e?.message || e);
-    const orderId = `SIM-${Date.now()}`;
-    // on vide le panier local si succès
-    clearCart();
-    return {
-      ok: true,
-      orderId,
-      status: "confirmed",
-      createdAt: new Date().toISOString(),
-      items: payload.items || [],
-      payment: payload.payment || {},
-      _fallback: true,
-    };
-  }
+  if (v) localStorage.setItem(CONSENT_KEY, JSON.stringify(v));
+  else localStorage.removeItem(CONSENT_KEY);
+  return v;
 }

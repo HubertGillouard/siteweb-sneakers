@@ -4,12 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Sneakers Shop</title>
-    <script type="module" crossorigin src="/assets/index-DoUVcl7P.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-j49s_3bl.css">
+    <meta name="description" content="Boutique de sneakers — catalogue, panier, paiement fictif, authentification." />
+    <meta name="theme-color" content="#0a0d12" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <!-- Polices -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+    <script type="module" crossorigin src="/assets/index-BAFhmlmh.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-vBWP53sY.css">
   </head>
   <body>
-    <div id="root">
-      <noscript>Active JavaScript pour utiliser l’application.</noscript>
-    </div>
+    <div id="root"><noscript>Active JavaScript pour utiliser l’application.</noscript></div>
   </body>
 </html>
