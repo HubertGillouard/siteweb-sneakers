@@ -1,0 +1,19 @@
+{
+  "name": "sneakers-backend",
+  "version": "3.0.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "seed": "node scripts/seed.js",
+    "mapping:web": "node scripts/import-web-mapping.js",
+    "mapping:api": "node scripts/import-web-mapping.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "dotenv": "^16.4.7"
+  }
+}
