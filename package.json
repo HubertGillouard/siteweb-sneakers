@@ -1,0 +1,10 @@
+{
+  "name": "siteweb-sneakers-main-rattrapage",
+  "private": true,
+  "scripts": {
+    "install:all": "cd sneakers-backend && npm install && cd ../sneakers-frontend && npm install",
+    "seed": "cd sneakers-backend && npm run seed",
+    "start:backend": "cd sneakers-backend && npm start",
+    "start:frontend": "cd sneakers-frontend && npm run dev"
+  }
+}

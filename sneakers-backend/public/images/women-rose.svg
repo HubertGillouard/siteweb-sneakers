@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#581c87"/><stop offset="100%" stop-color="#ec4899"/></linearGradient>
+  </defs>
+  <rect width="1200" height="900" fill="#0b1020"/>
+  <circle cx="950" cy="170" r="180" fill="url(#g)" opacity="0.35"/>
+  <circle cx="260" cy="730" r="220" fill="#ec4899" opacity="0.18"/>
+  <g transform="translate(160 250)">
+    <path d="M90 180 C150 130, 300 100, 430 120 C520 135, 640 175, 720 215 C760 235, 850 255, 900 245 L920 300 C850 340, 720 350, 640 336 C500 312, 390 280, 220 270 C165 266, 110 250, 78 220 Z" fill="#ffffff" opacity="0.94"/>
+    <path d="M280 270 L360 150 L590 170 L710 230" stroke="#0b1020" stroke-width="18" fill="none" stroke-linecap="round"/>
+    <path d="M130 250 C230 300, 380 315, 620 324 C745 330, 842 323, 900 305" stroke="#0b1020" stroke-width="12" fill="none" stroke-linecap="round" opacity="0.75"/>
+    <path d="M180 305 C220 355, 270 380, 360 390 C460 401, 610 394, 760 379" stroke="#dbe4ff" stroke-width="24" fill="none" stroke-linecap="round" opacity="0.85"/>
+  </g>
+  <text x="120" y="120" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="38" font-weight="700">SneakR Elite</text>
+  <text x="120" y="170" fill="#cbd5e1" font-family="Arial, Helvetica, sans-serif" font-size="24">WOMEN</text>
+</svg>

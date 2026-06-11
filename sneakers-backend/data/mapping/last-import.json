@@ -1,0 +1,45 @@
+{
+  "mode": "kicksdb-api-plus-fallback",
+  "targetCount": 100,
+  "startedAt": "2026-06-10T21:12:12.296Z",
+  "finishedAt": "2026-06-10T21:12:12.800Z",
+  "sources": [
+    {
+      "name": "KicksDB API",
+      "query": "nike air max",
+      "fetched": 20,
+      "accepted": 20
+    },
+    {
+      "name": "KicksDB API",
+      "query": "nike dunk",
+      "fetched": 20,
+      "accepted": 20
+    },
+    {
+      "name": "KicksDB API",
+      "query": "air jordan",
+      "fetched": 20,
+      "accepted": 20
+    },
+    {
+      "name": "KicksDB API",
+      "query": "adidas samba",
+      "fetched": 20,
+      "accepted": 20
+    },
+    {
+      "name": "KicksDB API",
+      "query": "adidas campus",
+      "fetched": 20,
+      "accepted": 20
+    }
+  ],
+  "warnings": [],
+  "imported": 100,
+  "counts": {
+    "apiCount": 100,
+    "publicCount": 0,
+    "localCount": 0
+  }
+}
